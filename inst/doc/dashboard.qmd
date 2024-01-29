@@ -1,0 +1,158 @@
+---
+title: "Acme, Inc."
+author: "Wily Coyote"
+#logo: images/acme.png
+format:
+  dashboard:
+    orientation: rows
+    theme: default
+# expandable: true
+# scrolling: false
+    nav-buttons:
+     - reddit
+     - icon: gitlab
+       href: https://gitlab.com/Acme
+---
+
+# Page 1
+
+## Sidebar {.sidebar}
+```{r}
+print('This is in the side')
+```
+
+## Main body of page
+
+### Row 1 {height="50%"}
+
+The trick to get the 
+
++ cards and 
++ valueboxes 
+
+to stack on top of each other,
+with Level 4 (####) headings. 
+
+full code 
+
++ https://github.com/AlbertRapp/3mw_newsletters/blob/master/59_Jan_10_2024/dashboard.qmd
+
+
+
+
+text goes here
+```{r}
+#| width: 70%
+#| component: valuebox
+list(
+  title = "newspaper valuebox r",
+  value = 5,
+  color = "blue",
+  icon = "newspaper"
+)
+```
+more text goes here
+```{r}
+#| height: 50%
+#| component: valuebox
+list(
+  title = "r envelope valuebox",
+  value = 5,
+  color = "green",
+  icon = "envelope"
+)
+```
+
+### Row 2
+
+#### Column 1
+```{r}
+#| height: 50%
+#| content: valuebox
+#| title: "Some cool number"
+list(
+  icon = "newspaper",
+  color = "danger",
+  value = 5
+)
+```
+
+```{python}
+#| height: 50%
+#| content: valuebox
+#| title: "Yet another cool number"
+dict(
+  icon = "chat",
+  color = "primary",
+  value = 42
+)
+```
+
+
+#### Column 2
+
+::: {.card}
+
+<--- That value box was created with R
+
+:::
+
+
+::: {.card}
+
+<--- That value box was created with Python
+
+:::
+
+
+
+# Page 2 {.tabset}
+<!-- what does tabset do there
+It opens on page 2.
+Anything else?
+-->
+
+## my_sidebar {.sidebar}
+```{r}
+Sys.Date()
+```
+
+## rest of page 2
+
+### row1 not visible?
+row1222
+
+```{r}
+#| title: cars
+plot(cars)
+```
+
+### row2
+
+```{r}
+#| title: AirPassengers
+# data()
+plot(AirPassengers)
+```
+```{python}
+#| component: valuebox
+dict(
+  title = "python chat valuebox",
+  value = 5,
+  color = "green",
+  icon = "chat"
+)
+```
+### row2
+
+
+# Notes
++ https://github.com/mcanouil/awesome-quarto
++ https://3mw.albert-rapp.de/p/quarto-dashboards
++ https://github.com/AlbertRapp/3mw_newsletters/blob/master/59_Jan_10_2024/dashboard.qmd
+
+
+::: {.card}
+Text inside a :::{.card} 
+that fills the rest of the page?
+:::

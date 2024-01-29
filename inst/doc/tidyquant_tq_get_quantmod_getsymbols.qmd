@@ -1,0 +1,100 @@
+---
+title: "ibrokers"
+---
+
+```{r library}
+#| show = FALSE
+if (!require(pacman)) install.packages("pacman")
+
+suppressPackageStartupMessages(
+  pacman::p_load(
+    usethis,
+    tidyverse, tidyquant, 
+    timetk, 
+    tsibble, # https://github.com/tidyverts/tsibble
+    scales, # highcharter,
+    broom,
+    PerformanceAnalytics
+  )
+)
+```
+
+## from-asset-to-portfolio-returns ---
++ [https://rviews.rstudio.com/2017/10/11/from-asset-to-portfolio-returns]
+  + quantmod::getSymbols
+```{r quantmod::getSymbols}
+etfs <- c(
+  "S&P500" = "SPY" #weighted 25%
+  , "non-US" = "EFA" # weighted 25%
+  , "small-cap value" = "IJS" # weighted 20%
+  , "emerging-mkts" = "EEM" # weighted 20%
+  , "bonds" = "AGG" #  weighted 10%
+)
+
+# WARNING: _no_ pipe into getSymbols i.e. NOT etfs %>% 
+getSymbols(etfs, src = 'yahoo', from = "2005-01-01", 
+             auto.assign = TRUE, warnings = FALSE) %>% 
+  map(~ Ad(get(.)) ) %>% 
+  reduce(merge) %>%
+  `colnames<-`(etfs) ->
+  price_daily 
+rm(list = etfs) # tidy up auto.assign = TRUE
+
+price_daily %>% 
+  to.monthly(indexAt = "last", OHLC = FALSE) ->
+  prices_monthly
+prices_monthly %>% 
+  Return.calculate(method = "log") %>% 
+  na.omit() ->
+  returns_xts 
+returns_xts %>% 
+  broom::tidy() %>% # from xts to tibble
+  tsibble(key = "series", index = "index") ->
+  rets_tsibble
+# TODO: plots to spotcheck the data levels
+rm(price_daily, prices_monthly)
+index(rets_tsibble)
+
+# Tidyverse method, to long, tidy format
+returns_xts %>% 
+  # from xts to tibble 
+  timetk:: tk_tbl(
+    preserve_index = TRUE, rename_index = "date") %>%
+  gather(asset, returns, -date) %>% 
+  group_by(asset) %>%
+  # FIXME: remove warning
+  mutate(returns = log(returns) - log(lag(returns))) ->
+  rets_tibble
+rm(returns_xts)
+```
+
+
+## tidyquant::tq_get ---
+```{r tidyquant::tq_get}
+symbols <- c("^GSPC", "^IRX")
+symbols %>% 
+  # tiingo_api_key() # quandl_api_key() / av_api_key()
+  tidyquant::tq_get(get = c("stock.prices", "tiingo.crypto")[1],
+         from = "1900-01-01")
+indices <- c("DOW", "DOWGLOBAL", "SP400", "SP500", "SP600")
+stocks <- tq_index(indices[1]) # stocks in an index.
+exchanges <- c("AMEX", "NASDAQ", "NYSE")
+# exch <- tq_exchange(exchanges[3]) # stocks on an exchange
+
+```
+
+
+## LSE ETF ---
+Stock	VANG S&P500 USDD / LSEETF	
+ISIN: IE00B3XXRP09
+Symbol: VUSA
+8
+Stock	ISHARES S&P CONSUMER DSCRTN / LSEETF	
+ISIN: IE00B4MCHD36
+Symbol: IUCD
+
+<https://quarto.org>
+
+```{r}
+1 + 1
+```

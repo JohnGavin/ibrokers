@@ -1,0 +1,399 @@
+---
+title: "Untitled"
+format: html
+editor: visual
+---
+```{r renv}
+#| eval = FALSE
+renv::diagnostics()
+renv:::renv_download_method()
+renv::restore()
+getOption("repos")
+renv::restore(repos="https://cloud.r-project.org")
+R.Version()$platform
+R.version.string
+```
+
+```{r}
+pacman::p_load(
+  IBrokers, # xts objects
+  broom, dplyr, stringr, janitor,
+  timetk, tsibble,
+  tidyverse, tidyquant, 
+  PerformanceAnalytics
+)
+```
+
+```{r IBrokers}
+# Get short description
+packageDescription("IBrokers") %>% str(list.len = 4)
+# Load help page
+help(package="IBrokers")
+# List all datasets in "IBrokers"
+data(package="IBrokers") 
+# List all objects in "IBrokers"
+ls("package:IBrokers") %>% head()
+# See ?IBrokers for details.
+# IBrokersRef()
+```
+
+
+```{r twsConnect}
+# IBrokers version 0.9-10.  Implementing API Version 9.64
+tws = twsConnect(port=7496)
+isConnected(tws) %>% 
+  stopifnot("no IB connection?" = .)
+tws %>% twsConnectionTime()
+tws %>% reqCurrentTime()
+# tws %>% reqIds() # write mode ON - next available ID
+tws %>% serverVersion()
+# tws %>% setServerLogLevel(logLevel = 2) # 1-5
+# on.exit(twsDisconnect(tws))
+```
+
+1. reqContractDetails: product information.
+1. reqHistoricalData: historical data
+  + https://github.com/algoquant/lecture_slides/blob/af992c5c8d2c44fd06fd5d3adf0bc5a7e229cc00/markets_trading.R#L1446
+    + reqHistoricalData for multiple stocks
+
+1. reqRealTimeBars # 5 second OHLCVWC bar
+1. reqMktData: real-time market data.
+  + reqMktData(tws, contract) subscription required
+  + [https://blog.quantinsti.com/r-implementation-in-interactive-brokers-api]
+1. reqMktDepth: real-time order book data.
+
+twsContract: Contract object
+twsEquity/twsSTK: equity Contract objects
+# https://github.com/algoquant/lecture_slides/blob/af992c5c8d2c44fd06fd5d3adf0bc5a7e229cc00/markets_trading.R#L1384C1-L1401C1 for examples
+twsOption/twsOPT: option Contract objects
+twsFuture/twsFUT: futures Contract objects
+twsFuture/twsFOP: futures options Contract objects
+twsCurrency/twsCASH: currency Contract objects
+
+```{r reqAccountUpdates, eval = FALSE}
+acc <- tws %>% reqAccountUpdates() # Account Details
+acc %>% str(max.level = 2, list.len = 3)
+acc[[1]] %>% unlist() %>% str()
+(posns <- acc %>% twsPortfolioValue())
+# tws %>% twsPortfolioValue()
+# tws %>% updatePortfolio
+```
+
+## LSEETF as primaryExchange?
+```{r reqMatchingSymbols}
+tws %>% 
+  reqMatchingSymbols(pattern = c('VEUD', "VOD")[1]) -> 
+  df
+df %>% 
+  as_tibble() %>% 
+  # remove contract. from start of colnames
+  rename_with(
+    ~ gsub("contract.", "", .x, fixed = TRUE), 
+        starts_with("contract.")) %>% 
+  arrange(symbol, 
+    secType, 
+    primaryExchange) %>% 
+  filter(primaryExchange %>% str_detect("^LSE")) %>% 
+  glimpse()
+df$primaryExchange %>% unique() %>% sort()
+# "LSE" NASDAQ JSE  EBS
+# LSEETF (3SVO, 3LVO)
+# fundamentalData(tws, contract)
+```
+
+```{r crypto}
+btcusd <- twsCurrency(symbol = "ETH", currency = "USD", exch = "IDEALPRO")
+# Request historical data for the last 10 days with 1 hour bars
+hist.data <- reqHistoricalData(tws, 
+  Contract = btcusd, 
+  barSize = "1 day", 
+  duration = "5 D")
+
+# https://interactivebrokers.github.io/tws-api/basic_contracts.html#crypto
+tickers <- c('SOL', 'SPY', "ETH")[3]
+contract <- twsEquity(
+  # conId = 0,
+  symbol = tickers, 
+  # sectype = 'CRYPTO',
+  exch = 'PAXOS',
+  primary = "",
+  currency = 'USD') 
+is.twsContract(contract)
+details <- reqContractDetails(tws, contract)[[1]]
+```
+
+```{r twsEquity, eval = FALSE}
+tickers <- c('VOD', 'SPY', "AAPL")[1]
+contract <- twsEquity(tickers, 'SMART') # twsSTK
+is.twsContract(contract)
+as.twsContract(contract)
+```
+
+```{r reqContractDetails, eval = FALSE}
+details <- reqContractDetails(tws, contract)[[1]]
+as.twsContract(details)
+str(details, max.level = 2, list.len = 3)
+details$longName
+details$exch %>% unique() %>% sort()
+details$exch %>% unique() %>% sort()
+details$validExchanges %>% unique() %>% sort()
+# "LTSE"
+```
+
+```{r twsEquity non-USD}
+# ?twsEquity currency = 'USD' is the default
+contract2 <- twsEquity(
+  symbol = 'VEUD', 
+  # exch = 'SMART',
+  primary = c('NASDAQ', 'LSE', 'LSEETF')[2]
+  # , currency='EUR'
+)
+reqHistoricalData(tws, Contract=contract2)
+contract2 <- twsEquity(
+  symbol = 'VOD', primary = 'LSE', currency='GBP') 
+reqHistoricalData(tws, Contract=contract2)
+# https://github.com/algoquant/lecture_slides/blob/af992c5c8d2c44fd06fd5d3adf0bc5a7e229cc00/markets_trading.R#L1446
+
+contract3 <- twsEquity(
+  symbol = 'SBIN', exch = 'NSE', currency='INR') 
+reqHistoricalData(tws, Contract = contract3)
+```
+
+
+```{r real time, eval = FALSE}
+contract5 <- twsEquity('aapl', 'smart')
+reqMktData(tws, Contract=contract5)
+reqMktData(tws, twsEquity("QQQ"))
+# Delayed market data is available.
+#   VOD NASDAQ.NMS/TOP/ALL
+# TODO: See link in 'Market Data Connections' dialog?
+contract4 <- twsEquity(
+  symbol = 'VOD', exch = 'NASDAQ', currency='USD') 
+reqMktData(tws, Contract=contract4)
+# subscription for LSE 
+# reqMktData(tws, contract, snapshot = TRUE)
+reqMktDepth(tws, contract)
+reqRealTimeBars(tws, contract)
+# updateMktDepth
+```
+
+### reqHistoricalData
++ only specific combinations of barSize / duration  valid
+  + https://interactivebrokers.github.io/tws-api/historical_bars.html#hd_duration
+  + https://interactivebrokers.github.io/tws-api/historical_limitations.html
++ some security types have no historical data 
+```{r IBrokers::reqHistoricalData}
+tws %>% 
+  IBrokers::reqHistoricalData(
+    Contract = contract,
+    endDateTime = "",
+    barSize = c("1 day", "1 min")[1],
+    duration = c("1 Y", "1 D")[1]
+    #, endDateTime = tws %>% reqCurrentTime()
+    # , timeFormat, tzone
+  ) %>% 
+  I() ->
+  dat_raw
+dat_raw %>% str()
+```
+
+```{r broom yearweek}
+dat_raw %>% broom::tidy() %>% glimpse()
+dat_raw %>% names()
+dat_raw %>% 
+  # FIXME: keep the symbol name?
+  to.weekly(indexAt = "last") %>% names()
+  # na.omit() 
+#dat_raw %>% 
+  # timetk:: tk_tbl(   # from xts to tibble 
+  #  preserve_index = TRUE, rename_index = "date") %>%
+  # date becomes character so no longer index?
+  # utils::type.convert(as.is = TRUE) %>% 
+dat_raw %>% 
+  broom::tidy() %>% # from xts to tibble
+  separate(
+    col = series, 
+    into = c("symbol", "type")) %>% 
+  mutate(type = type %>% tolower()) %>% 
+  filter(
+    type %>% 
+    str_detect("high|low|open|gaps$") %>% 
+    `!`) %>% # exclusions
+  pivot_wider(names_from = "type") %>% 
+  # aggregate == xts::to.weekly(indexAt = "last")
+  mutate(time_step = yearweek(index)) %>% 
+  group_by(time_step, symbol) %>% 
+  summarise(
+    close = last(close),
+    wap   = mean(wap),
+    count = sum(count),
+    volume  = sum(volume),
+    .groups = 'drop'
+  ) %>% 
+  # Return.calculate(method = "log") %>% 
+  mutate(
+    log_close = log(close),
+    ret_close = log_close - lag(log_close, 1),
+  ) %>% 
+  select(-c(log_close)) %>% 
+  # readr::type_convert(guess_integer = TRUE)
+  # tsibble(index = "time_step", ley = 'symbol') %>% 
+  I() ->
+  df
+str(df)
+```
+
++ strictly enforced 10 seconds between request pacing rule implemented by the TWS
+  + reqHistoricalData currently does not manage this!
+  + but reqHistory does
+
++ reqHistory is slow IBrokers only call
+  + for one year? or 5 D of 1 minute bars
+  + or 10 D of 15 minute bars
+  + respecting IB timeouts (10 seconds) 
+    + maximum bars per request (2000)
+
+```{r slow 1 or 15 min reqHistory, eval = FALSE}
+# reqHistory request maximal history given bar size
+# WARNING: only barSize == 1 min / 5 D | 15 mins / 10 D
+system.time(
+  tws %>% 
+  IBrokers::reqHistory(
+    Contract = contract,
+    barSize = c("15 mins", "1 day", "1 min")[2],
+    # duration = '1 D'
+    #, endDateTime = tws %>% reqCurrentTime()
+  ) %>% 
+  I() ->
+  dat_raw_hf
+)
+```
+
+
+## plot
++ https://github.com/algoquant/lecture_slides/blob/af992c5c8d2c44fd06fd5d3adf0bc5a7e229cc00/markets_trading.R#L1578C1-L1581C1
+```{r Plot OHLC, eval = FALSE}
+library(dygraphs)
+dygraphs::dygraph(pricev[, 1:4], main="S&P500 ESM9 futures") %>%
+  dyCandlestick()
+```
+
+
+```{r reqHistoricalData v reqHistory, eval = FALSE}
+# tws <- twsConnect()
+# requested exchange == default / smart
+# primary exchange == island
+contract <- twsEquity('QQQ','SMART','ISLAND')
+
+# 30 days of daily - default
+Sys.sleep(10) 
+reqHistoricalData(tws, Contract=contract)
+# mandatory 10s - else IB pacing violation
+Sys.sleep(10) 
+# WARNING: slooow - default 1 year of 1 minute bars
+reqHistory(tws, Contract=contract,
+  barSize = c("1 day", "1 min")[1]
+  # endDateTime = Sys.time()
+  # duration = c("1 Y", "1 D")[2]
+)
+
+```
+
+```{r futures}
+# https://www.rpubs.com/julian_antonio/implavo_research
+# Define contract 
+ohlc_daily_spx = twsIND("SPX", "CBOE")
+# ohlc of price and the iv 
+Sys.sleep(10) 
+ohlc_daily_iv_spx_IB <- reqHistoricalData(
+  tws, 
+  ohlc_daily_spx, 
+  barSize = "1 day", 
+  duration = '2 Y', 
+  whatToShow = "OPTION_IMPLIED_VOLATILITY")
+Sys.sleep(10) 
+ohlc_daily_price_spx_IB = reqHistoricalData(tws, ohlc_daily_spx, barSize = "1 day", duration = '15 Y', whatToShow = "TRADES")
+
+```
+```{r}
+# https://interactivebrokers.github.io/tws-api/basic_contracts.html#Indexes
+# Contract contract = new Contract();
+# contract.Symbol = "DAX";
+# contract.SecType = "IND";
+# contract.Currency = "EUR";
+# contract.Exchange = "EUREX";
+
+```
+
+
+
+
+```{r currency, eval = FALSE}
+library(twsInstrument)
+contract6 <- getContract("EUR.USD")
+reqHistoricalData( tws, contract6, verbose=T, whatToShow="BID" )
+reqHistoricalData( tws, contract6, verbose=T, whatToShow="ASK" )
+
+```
+
+```{r quantmod::getQuote, eval = FALSE}
+library(quantmod)
+from <- c("CAD", "JPY", "USD")
+to <- c("USD", "USD", "EUR")
+getQuote(paste0(from, to, "=X"))
+```
+
+
+# https://stackoverflow.com/questions/26694042/how-to-get-currency-exchange-rates-in-r
+
+# TODOs 
++ https://interactivebrokers.github.io/tws-api/news.html#news_providers
+  + reqNewsProviders
++ https://interactivebrokers.github.io/tws-api/market_scanners.html#scanner_examples
+  + ScannerSubscription
++ https://interactivebrokers.github.io/tws-api/head_timestamp.html#reqHeadTimeStamp
+  + reqHeadTimeStamp
++ https://stackoverflow.com/questions/tagged/ibrokers
++ # Download raw data for multiple contracts for replay
+  + https://github.com/algoquant/lecture_slides/blob/af992c5c8d2c44fd06fd5d3adf0bc5a7e229cc00/markets_trading.R#L1791
++ https://alphaarchitect.com/2024/01/equally-weighted-portfolios/
++ combined two exclusion strategies 
+  + filtered stocks 
+    + lowest sharpe ratios
+      + five year look-back period
++ fund families 
+  + Alpha Architect, AQR, Avantis, Bridgeway, and Dimensional
++ construction rules based on empirical research
+
+## universes
+
++ excluding stocks with 
+  + negative momentum 
+  + lottery stocks 
+    - high betas 
+    - low profitability
+    ) from their eligible 
+
+# TODOs
++ twsInstrument
+```{r}
+# Install the package twsInstrument
+install.packages("twsInstrument", repos="http://r-forge.r-project.org")
+```
+
++ https://github.com/algoquant/IBrokers2
+  + additional trade execution capabilities, for running systematic trading strategies in a callback loop
+  + https://github.com/algoquant/IBrokers2/tree/master/vignettes
+  + https://github.com/algoquant/IBrokers2/tree/master/scripts
+
++ https://github.com/censix/datafeedMKT-pub
++ https://github.com/censix/INTRADAY-PartAB
++ https://www.youtube.com/watch?v=zNQY5Krv8aA
+  + Option Algorithmic Trading with Interactive Brokers | R
+  + twsComboLeg / twsBAG
+  + https://github.com/jgQuantScripts/Options-Algo
+
+```{r twsDisconnect}
+twsDisconnect(tws)
+```
+
