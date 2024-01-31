@@ -1,0 +1,41 @@
+---
+title: "Best Free Investing Tools"
+format: revealjs
+editor: visual
+---
+
+# Tools
++ [Many Happy Returns](https://podcastaddict.com/many-happy-returns/episode/170601540)
+
+# Fund screening
+-   [JustETF](https://www.justetf.com/en/)
+-   [VettaFI](https://etfdb.com/)
+-   [Morningstar fund screener](https://www.morningstar.co.uk/uk/fundscreener/default.aspx)
+-   [Morningstar ETF screener](https://www.morningstar.co.uk/uk/screener/etf.aspx)
+
+# Market Data
+-   [FRED](https://fred.stlouisfed.org/)
+-   [Koyfin](https://koyfin.com/?via=pensioncraft)
+-   [FinViz](https://finviz.com/)
+-   [Yahoo Finance](https://uk.finance.yahoo.com/)
+-   [Google Finance](https://www.google.com/finance/)
+-   [Dataroma](https://www.dataroma.com/m/home.php)
+
+# Valuation
+-   [Yardeni](https://yardeni.com/)
+-   [Research Affiliates](https://interactive.researchaffiliates.com/asset-allocation)
+-   [Barclays Indices](https://indices.cib.barclays/IM/21/en/indices/static/historic-cape.app)
+-   [Aswath Damodaran](https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/countrystats.html)
+
+# Historic returns data
+-   [Bogleheads SIMBA spreadsheet](https://www.bogleheads.org/wiki/Simba%27s_backtesting_spreadsheet)
+-   [Robert Shiller’s data](http://www.econ.yale.edu/~shiller/data.htm)
+-   [Fama/French data](http://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html)
+-   [MSCI data](https://www.msci.com/end-of-day-data-search)
+
+# Portfolio backtests
+-   [PortfolioCharts](https://portfoliocharts.com/)
+-   [Portfolio Visualizer](https://www.portfoliovisualizer.com/)
+-   [FI Calc](https://ficalc.app/)
+
+
